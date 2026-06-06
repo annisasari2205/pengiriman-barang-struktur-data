@@ -1,104 +1,92 @@
-class QueuePengiriman:
+import streamlit as st
+from collections import deque
+
+# =====================================
+# KELAS QUEUE PENGIRIMAN BARANG
+# =====================================
+class PengirimanQueue:
     def __init__(self):
-        self.antrian = []
+        self.antrian = deque()
 
-    def hitung_ongkir(self, berat):
-        ongkir_dasar = 15000
-        batas_berat = 5
+    def tambah_barang(self, kode, nama, tujuan):
+        self.antrian.append({
+            "Kode": kode,
+            "Nama": nama,
+            "Tujuan": tujuan
+        })
 
-        if berat > batas_berat:
-            kelebihan = berat - batas_berat
-            tambahan = kelebihan * 2000
-            return ongkir_dasar + tambahan
+    def kirim_barang(self):
+        if self.antrian:
+            return self.antrian.popleft()
+        return None
+
+    def lihat_antrian(self):
+        return list(self.antrian)
+
+# =====================================
+# SESSION STATE
+# =====================================
+if "queue" not in st.session_state:
+    st.session_state.queue = PengirimanQueue()
+
+# =====================================
+# TAMPILAN STREAMLIT
+# =====================================
+st.title("📦 Sistem Pengiriman Barang (Queue FIFO)")
+
+menu = st.sidebar.selectbox(
+    "Pilih Menu",
+    ["Tambah Barang", "Kirim Barang", "Lihat Antrian"]
+)
+
+# =====================================
+# MENU TAMBAH BARANG
+# =====================================
+if menu == "Tambah Barang":
+    st.subheader("Tambah Barang ke Antrian")
+
+    kode = st.text_input("Kode Barang")
+    nama = st.text_input("Nama Barang")
+    tujuan = st.text_input("Tujuan Pengiriman")
+
+    if st.button("Tambah"):
+        if kode and nama and tujuan:
+            st.session_state.queue.tambah_barang(
+                kode,
+                nama,
+                tujuan
+            )
+            st.success("Barang berhasil masuk antrian!")
         else:
-            return ongkir_dasar
+            st.error("Semua data harus diisi!")
 
-    def enqueue(self, resi, nama_barang, kategori, berat, penerima, alamat):
-        ongkir = self.hitung_ongkir(berat)
+# =====================================
+# MENU KIRIM BARANG
+# =====================================
+elif menu == "Kirim Barang":
+    st.subheader("Proses Pengiriman Barang")
 
-        barang = {
-            "resi": resi,
-            "nama_barang": nama_barang,
-            "kategori": kategori,
-            "berat": berat,
-            "penerima": penerima,
-            "alamat": alamat,
-            "ongkir": ongkir
-        }
+    if st.button("Kirim Barang Berikutnya"):
+        barang = st.session_state.queue.kirim_barang()
 
-        self.antrian.append(barang)
-        print("Barang berhasil ditambahkan ke antrian!")
-
-    def dequeue(self):
-        if len(self.antrian) == 0:
-            print("Antrian kosong!")
+        if barang:
+            st.success("Barang berhasil dikirim!")
+            st.write("### Detail Barang")
+            st.write(f"Kode : {barang['Kode']}")
+            st.write(f"Nama : {barang['Nama']}")
+            st.write(f"Tujuan : {barang['Tujuan']}")
         else:
-            barang = self.antrian.pop(0)
+            st.warning("Antrian kosong!")
 
-            print("\n=== BARANG DIKIRIM ===")
-            print("No Resi      :", barang["resi"])
-            print("Nama Barang  :", barang["nama_barang"])
-            print("Kategori     :", barang["kategori"])
-            print("Berat        :", barang["berat"], "kg")
-            print("Penerima     :", barang["penerima"])
-            print("Alamat       :", barang["alamat"])
-            print("Total Ongkir : Rp", barang["ongkir"])
+# =====================================
+# MENU LIHAT ANTRIAN
+# =====================================
+elif menu == "Lihat Antrian":
+    st.subheader("Daftar Antrian Pengiriman")
 
-    def tampilkan_antrian(self):
-        if len(self.antrian) == 0:
-            print("Antrian kosong!")
-        else:
-            print("\n=== DAFTAR ANTRIAN PENGIRIMAN ===")
+    data = st.session_state.queue.lihat_antrian()
 
-            for i, barang in enumerate(self.antrian, start=1):
-                print(f"\nData Barang #{i}")
-                print("No Resi      :", barang["resi"])
-                print("Nama Barang  :", barang["nama_barang"])
-                print("Kategori     :", barang["kategori"])
-                print("Berat        :", barang["berat"], "kg")
-                print("Penerima     :", barang["penerima"])
-                print("Alamat       :", barang["alamat"])
-                print("Total Ongkir : Rp", barang["ongkir"])
-
-
-# Program Utama
-queue = QueuePengiriman()
-
-while True:
-    print("\n===== SISTEM PENGIRIMAN BARANG =====")
-    print("1. Tambah Barang")
-    print("2. Proses Pengiriman")
-    print("3. Lihat Antrian")
-    print("4. Keluar")
-
-    pilihan = input("Pilih Menu: ")
-
-    if pilihan == "1":
-        resi = input("No Resi            : ")
-        nama_barang = input("Nama Barang        : ")
-        kategori = input("Kategori Barang    : ")
-        berat =int(input("Berat Barang (kg)  : "))
-        penerima = input("Nama Penerima      : ")
-        alamat = input("Alamat Tujuan      : ")
-
-        queue.enqueue(
-            resi,
-            nama_barang,
-            kategori,
-            berat,
-            penerima,
-            alamat
-        )
-
-    elif pilihan == "2":
-        queue.dequeue()
-
-    elif pilihan == "3":
-        queue.tampilkan_antrian()
-        
-    elif pilihan == "4":
-        print("Program selesai, Terimakasih!")
-        break
-
+    if data:
+        st.table(data)
     else:
-        print("Pilihan tidak valid!")
+        st.info("Belum ada barang dalam antrian.")
